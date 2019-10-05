@@ -1,24 +1,26 @@
+# from django.core.mail import send_mail
+
 from rest_framework import viewsets
-from mynewsite.users.models import User, AuthToken
-from mynewsite.users.serializers import CustomUserDetailsSerializer, CustomUserDetailsUnauthorizedSerializer
 from rest_framework.response import Response
-from django.core.mail import send_mail
 from rest_framework.authtoken.models import Token
 from rest_framework.authtoken.views import ObtainAuthToken
 from rest_framework.decorators import action
 
+from mynewsite.users.models import User, AuthToken
+from mynewsite.users.serializers import UserSerializer, UserUnauthorizedSerializer
+
 
 class CustomRegisterView(viewsets.ModelViewSet):
     queryset = User.objects.all()
-    serializer_class = CustomUserDetailsSerializer
+    serializer_class = UserSerializer
 
     def create(self, request):
-        serializer = CustomUserDetailsSerializer(data=request.data)
+        serializer = UserSerializer(data=request.data)
         if serializer.is_valid():
-            object = serializer.save()
-            token = Token.objects.get(user=object)
-            print(token.user)
-            print(object.email)
+
+            # TODO: create emailer account to be able to send email from django
+            # object = serializer.save()
+            # token = Token.objects.get(user=object)
             # send_mail(
             #     'Token for Activation',
             #     'Here is your token %s' %token,
@@ -31,13 +33,12 @@ class CustomRegisterView(viewsets.ModelViewSet):
             return Response(data=serializer.errors)
 
     def list(self, request):
-        # import pdb; pdb.set_trace()
         token = request.headers['Authorization'].replace('Bearer ', '')
         try:
             Token.objects.get(key=token)
             return Response(data=self.get_serializer(self.queryset, many=True).data)
         except Exception:
-            return Response(data=CustomUserDetailsUnauthorizedSerializer(self.queryset, many=True).data)
+            return Response(data=UserUnauthorizedSerializer(self.queryset, many=True).data)
 
     @action(methods=['PUT'], detail=False, url_path='key')
     def activate(self, request, pk=None):
@@ -66,17 +67,6 @@ class CustomRegisterView(viewsets.ModelViewSet):
                 return Response(data={'error': 'Invalid username or password'}, status=401)
         except Exception:
             return Response(data={'error': 'Token is Invalid'}, status=404)
-
-        # user = self.queryset.get(email=email)
-        # if user:
-        #     try:
-        #         validate_password(password, user)
-        #
-        #     except ValidationError:
-        #         return Response(data={'error': 'Invalid username or password'}, status=401)
-        #
-        # else:
-        #     return Response(data={'error': "Token is invalid"}, status=404)
 
 
 class CustomAuthToken(ObtainAuthToken):
